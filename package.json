@@ -19,8 +19,13 @@
   },
   "homepage": "https://github.com/mohammednuhan/stock-app#readme",
   "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.1.2",
     "tsx": "^4.23.11",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.3"
   }
 }
