@@ -1,13 +1,46 @@
 import express,{Request ,Response} from 'express';
 import jwt from 'jsonwebtoken'
 
+import { PrismaClient } from "../generated/prisma/client"
+import { PrismaPg } from "@prisma/adapter-pg"
+import bcrypt  from "bcrypt "
+import bun from "bun"
+
+const adapter = new PrismaPg({
+    connectionString: process.env.DATABASE_URL!
+});
+
+const prisma = new PrismaClient({
+    adapter,
+})
+
 const app = express ();
 app.use(express.json());
 
 app.post('signup',async(req : Request, res: Response )=>{`  `
-    const username = req.body.username;
-    const password = req.body.password;
+    const { username ,password }= req.body
 
+    const userExist= await prisma.user.findUnique({
+        where : {
+            username 
+        }
+    })
+    if(userExist){
+        return res.status(403).json({
+            message : "user already exist"
+        })
+    }
+    const hashPassword = await bcrypt.hashPassword(password,20)
+
+
+    await prisma.user.create ({
+        username : username,
+        password : hashPassword
+    })
+
+    res.json ({
+        message : "user created successfully"
+    })
 })
 
 
