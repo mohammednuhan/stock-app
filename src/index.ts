@@ -63,8 +63,7 @@ app.post('/signin',async(req : Request ,res : Response )=>{
 
         const token = jwt.sign ({
             userId : user.id
-        },process.env.JWT_SECRET
-     )
+        },process.env.JWT_SECRET)
 
     res.json ({
        token : token 
@@ -74,7 +73,7 @@ app.post('/signin',async(req : Request ,res : Response )=>{
 
 app.post('/orders',authMiddleware,async(req : Request, res : Response)=>{
      const userId = req.body
-     const {symbol, side, price, qty, type } = req.body
+     const { symbol, side, price, qty, type } = req.body
 
      const order = await prisma.order.findOne({
         where : 
@@ -97,7 +96,29 @@ app.post('/orders',authMiddleware,async(req : Request, res : Response)=>{
 
 })
 
-app.get('/orders.orderid',async(req : Request, res : Response)=>{
+app.get('/orders.orderId',authMiddleware,async(req : Request, res : Response)=>{
+    const userId = req.body;
+    const orderId = req.body 
+
+    const id  = await prisma.orderId.findOne({
+        where : {
+            userId : userId
+        }
+    })
+    if(!userId){
+        return res.status(403).json({
+            message : "order id not found"
+        })
+    }
+    await prisma.orderId.create({
+        data : {
+            id ,
+            orderId
+        }
+    })
+    res.json ({
+        message  : "order id recorded"
+    })
 
 })
 
