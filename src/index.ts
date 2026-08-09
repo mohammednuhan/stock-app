@@ -2,9 +2,8 @@ import express,{Request ,Response} from 'express';
 import jwt from 'jsonwebtoken'
 import { PrismaClient } from "../generated/prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
-import bcrypt  from "bcrypt "
-import bun from "bun"
-import authMiddleware from "authMiddleware"
+import bcrypt  from "bcrypt"
+import authMiddleware from "./authmiddleware"
 
 const adapter = new PrismaPg({
     connectionString: process.env.DATABASE_URL!
@@ -17,7 +16,7 @@ const prisma = new PrismaClient({
 const app = express ();
 app.use(express.json());
 
-app.post('signup',async(req : Request, res: Response )=>{`  `
+app.post('/signup',async(req : Request, res: Response )=>{
     const { username ,password }= req.body
 
     const userExist= await prisma.user.findUnique({
@@ -26,16 +25,18 @@ app.post('signup',async(req : Request, res: Response )=>{`  `
         }
     })
     if(userExist){
-        return res.status(403).json({
+        return res.status(409).json({
             message : "user already exist"
         })
     }
-    const hashPassword = await bcrypt.hashPassword(password,20)
+    const hashPassword = await bcrypt.hash(password,20)
 
 
     await prisma.user.create ({
-        username : username,
+        where : {
+        username ,
         password : hashPassword
+        }
     })
 
     res.json ({
@@ -47,24 +48,34 @@ app.post('signup',async(req : Request, res: Response )=>{`  `
 app.post('/signin',async(req : Request ,res : Response )=>{
         const { username , password } = req.body
 
-        const userExist = await prisma.user.findOne ({
+        const user = await prisma.user.findUnique({
             where : {
-                username ,
-                password 
+                username
             }
         })
-        if(userExist){
+        if(!user){
             return res.status(403).json({
                 message : "user already logged in"
             })
         }
 
-        const hashPassword = await bcrypt.password.comapare (password ,10 )
+       const passwordMatch = await bcrypt.compare(
+            password,
+            user.password
+        );
+        if (!passwordMatch) {
+            return res.status(403).json({
+            message: "Wrong password"
+    });
+}
 
-        const token = jwt.sign ({
-            userId : user.id
-        },process.env.JWT_SECRET)
-
+    const token = jwt.sign(
+    {
+        userId: user.id
+    },
+    process.env.JWT_SECRET!
+    );
+    
     res.json ({
        token : token 
     })
@@ -123,7 +134,7 @@ app.get('/orders.orderId',authMiddleware,async(req : Request, res : Response)=>{
 })
 
 app.delete('/orders',async(req : Request, res : Response)=>{
-
+    
 })
 
 app.get('/orders',async(req : Request, res : Response)=>{
