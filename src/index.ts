@@ -83,40 +83,45 @@ app.post('/signin',async(req : Request ,res : Response )=>{
 
 
 app.post('/orders',authMiddleware,async(req : Request, res : Response)=>{
-     const userId = req.body
+     const userId = req.body.userId
      const { symbol, side, price, qty, type } = req.body
 
-     const order = await prisma.order.findOne({
-        where : 
+     const order = await prisma.order.findUnique({
+        where : {
             userId
+        }
      })
-     if(!order){
-        return res.status(403).json({
-            message : "order is sold"
-        })
-     }
+    
      await prisma.order.create({
         data : {
             userId : userId,
-            order : order
+            order : order,
+            symbol ,
+            side,
+            price,
+            qty,
+            type
         }
      })
      res.json ({
-        message : "order completed"
+        message : "order completed successfully",
+        order
+
      })
 
 })
 
-app.get('/orders.orderId',authMiddleware,async(req : Request, res : Response)=>{
-    const userId = req.body;
-    const orderId = req.body 
+app.get('/orders/orderId',authMiddleware,async(req : Request, res : Response)=>{
+    const userId = req.body.userId;
+   const orderId = Number(req.params.orderId);
 
-    const id  = await prisma.orderId.findOne({
+    const id  = await prisma.order.findFirst({
         where : {
+            id : orderId,
             userId : userId
         }
     })
-    if(!userId){
+    if(!orderId){
         return res.status(403).json({
             message : "order id not found"
         })
