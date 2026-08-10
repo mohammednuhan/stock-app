@@ -1,9 +1,10 @@
 import express,{Request ,Response} from 'express';
+import "dotenv/config";
 import jwt from 'jsonwebtoken'
-import { PrismaClient } from "./generated/prisma/client";
+import { PrismaClient } from "./generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg"
 import bcrypt  from "bcrypt"
-import authMiddleware from "./authmiddleware"
+import authMiddleware from "./authmiddleware.js"
 
 const adapter = new PrismaPg({
     connectionString: process.env.DATABASE_URL!
@@ -16,33 +17,34 @@ const prisma = new PrismaClient({
 const app = express ();
 app.use(express.json());
 
-app.post('/signup',async(req : Request, res: Response )=>{
-    const { username ,password }= req.body
+app.post("/signup", async (req: Request, res: Response) => {
 
-    const userExist= await prisma.user.findUnique({
-        where : {
-            username 
-        }
-    })
-    if(userExist){
-        return res.status(409).json({
-            message : "user already exist"
-        })
-    }
-    const hashPassword = await bcrypt.hash(password,20)
+  const { username, password } = req.body;
+  const userExist = await prisma.user.findFirst({
+    where: {
+      username,
+    },
+  });
 
+  if (userExist) {
+    return res.status(409).json({
+      message: "User already exists",
+    });
+  }
 
-    await prisma.user.create({
-        data :{
-        username ,
-        password : hashPassword
-        }
-    })
+  const hashPassword = await bcrypt.hash(password, 10);
 
-    res.json ({
-        message : "user created successfully"
-    })
-})
+  await prisma.user.create({
+    data: {
+      username,
+      password: hashPassword,
+    },
+  });
+  
+  res.json({
+    message: "User created successfully",
+  });
+});
 
 
 app.post('/signin',async(req : Request ,res : Response )=>{
@@ -178,5 +180,6 @@ app.get('/balance',async(req : Request, res : Response)=>{
 
 
 
-
-app.listen (3000);
+app.listen(4000, () => {
+  console.log("Server running on port 4000");
+});

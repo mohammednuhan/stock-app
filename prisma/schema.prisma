@@ -10,7 +10,10 @@ datasource db {
 model User {
   id        Int @id @default(autoincrement())
   username  String @unique
-  password  String 
+  password  String
+ 
+  orders   Order[]
+  fills    Fill[]
 }
 
 model Stock {
@@ -29,6 +32,9 @@ model Order {
   side          String
   symbol        String
   createdAt     DateTime @default(now())
+
+   user      User     @relation(fields: [userId], references: [id])
+  fills     Fill[]
 }
 
 model Fill {
@@ -40,4 +46,8 @@ model Fill {
   side        Int
   symbol      Int
   createdAt   DateTime @default(now())
+
+
+  user      User     @relation(fields: [userId], references: [id])
+  order     Order    @relation(fields: [orderId], references: [id])
 }
