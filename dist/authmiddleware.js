@@ -16,6 +16,7 @@ function authMiddleware(req, res, next) {
         }
         else {
             const decoded = jwt.verify(token, SECRET_KEY);
+            console.log(process.env.JWT_SECRET);
             if (!decoded.userId) {
                 return res.status(403).json({
                     message: "User ID is missing",

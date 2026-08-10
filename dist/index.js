@@ -13,6 +13,22 @@ const prisma = new PrismaClient({
 });
 const app = express();
 app.use(express.json());
+const balance = {
+    1: {
+        Axis: {
+            locked: 10,
+            available: 20
+        }
+    },
+    HDFC: {
+        locked: 20,
+        available: 30,
+    },
+    IDFC: {
+        locked: 30,
+        available: 40
+    }
+};
 app.post("/signup", async (req, res) => {
     const { username, password } = req.body;
     const userExist = await prisma.user.findFirst({
@@ -57,22 +73,34 @@ app.post('/signin', async (req, res) => {
     const token = jwt.sign({
         userId: user.id
     }, process.env.JWT_SECRET);
+    console.log(process.env.JWT_SECRET);
     res.json({
         token: token
     });
 });
 app.post('/orders', authMiddleware, async (req, res) => {
-    const userId = req.body.userId;
-    const { id, side, price, qty, orderId, filledQty, symbol } = req.body;
-    const order = await prisma.order.findUnique({
-        where: {
-            id,
-            userId
-        }
-    });
-    await prisma.order.create({
+    const userId = Number(req.body.userId);
+    const { orderId, side, price, qty, filledQty, symbol } = req.body;
+    const userBalance = balance[userId];
+    if (!userBalance) {
+        return res.status(404).json({
+            message: "User not found"
+        });
+    }
+    const stockBalance = userBalance[symbol];
+    if (!stockBalance) {
+        return res.status(404).json({
+            message: "Stock not found"
+        });
+    }
+    const totalPrice = price * qty;
+    if (stockBalance.available < totalPrice) {
+        return res.status(403).json({
+            message: "Insufficient balance"
+        });
+    }
+    const order = await prisma.order.create({
         data: {
-            id,
             orderId,
             userId,
             price,
@@ -82,9 +110,11 @@ app.post('/orders', authMiddleware, async (req, res) => {
             symbol
         }
     });
+    stockBalance.available = stockBalance.available - totalPrice;
     res.json({
-        message: "order completed successfully",
-        order
+        message: "Order completed successfully",
+        order,
+        remainingBalance: stockBalance.available
     });
 });
 app.get('/orders/:orderId', authMiddleware, async (req, res) => {

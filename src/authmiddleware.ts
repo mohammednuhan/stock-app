@@ -25,6 +25,7 @@ function authMiddleware(
       const decoded = jwt.verify(token, SECRET_KEY) as JwtPayload & {
         userId: string;
       };
+      console.log(process.env.JWT_SECRET);
 
       if (!decoded.userId) {
         return res.status(403).json({

@@ -17,6 +17,37 @@ const prisma = new PrismaClient({
 const app = express ();
 app.use(express.json());
 
+
+//in memory data
+type Balance = {
+  locked: number;
+  available: number;
+};
+
+type UserBalance = {
+  Axis: Balance;
+  HDFC: Balance;
+  IDFC: Balance;
+};
+
+const balance  : any = {
+    1 : {
+        Axis :{
+            locked : 10 ,
+            available : 20
+        }
+    },
+    HDFC : {
+        locked : 20 ,
+        available : 30,
+    },
+    IDFC : {
+        locked : 30 ,
+        available : 40
+    }
+}
+
+
 app.post("/signup", async (req: Request, res: Response) => {
 
   const { username, password } = req.body;
@@ -77,7 +108,7 @@ app.post('/signin',async(req : Request ,res : Response )=>{
     },
     process.env.JWT_SECRET!
     );
-    
+    console.log(process.env.JWT_SECRET);
     res.json ({
        token : token 
     })
@@ -85,36 +116,55 @@ app.post('/signin',async(req : Request ,res : Response )=>{
 
 
 app.post('/orders',authMiddleware,async(req : Request, res : Response)=>{
-     const userId = req.body.userId
-     const { id,side, price, qty,orderId,filledQty,symbol} = req.body
 
-     const order = await prisma.order.findUnique({
-        where : {
-            id ,
-            userId
-        }
-     })
-    
-     await prisma.order.create({
-        data : {
-            id ,
-            orderId,
-            userId,
-            price,
-            qty,
-            filledQty,
-            side,
-            symbol
-        
-        }
-     })
-     res.json ({
-        message : "order completed successfully",
-        order
+  const userId = Number(req.body.userId);
 
-     })
+  const { orderId,side,price,qty,filledQty,symbol } = req.body;
 
-})
+  const userBalance = balance[userId];
+
+  if (!userBalance) {
+    return res.status(404).json({
+      message: "User not found"
+    });
+  }
+
+  const stockBalance = userBalance[symbol];
+
+  if (!stockBalance) {
+    return res.status(404).json({
+      message: "Stock not found"
+    });
+  }
+
+  const totalPrice = price * qty;
+
+  if (stockBalance.available < totalPrice) {
+    return res.status(403).json({
+      message: "Insufficient balance"
+    });
+  }
+
+  const order = await prisma.order.create({
+    data: {
+      orderId,
+      userId,
+      price,
+      qty,
+      filledQty,
+      side,
+      symbol
+    }
+  });
+
+  stockBalance.available = stockBalance.available - totalPrice;
+
+  res.json({
+    message: "Order completed successfully",
+    order,
+    remainingBalance: stockBalance.available
+  });
+});
 
 app.get('/orders/:orderId',authMiddleware,async(req : Request, res : Response)=>{
    const orderId = Number(req.params.orderId);
