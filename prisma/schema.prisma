@@ -21,11 +21,13 @@ model Stock {
 
 model Order {
   id            Int @id @default(autoincrement())
-  stockId       Int 
+  orderId       Int 
   userId        Int 
   price         Int
   qty           Int
   filledQty     Int
+  side          String
+  symbol        String
   createdAt     DateTime @default(now())
 }
 
@@ -35,5 +37,7 @@ model Fill {
   orderId     Int
   price       Int 
   qty         Int
+  side        Int
+  symbol      Int
   createdAt   DateTime @default(now())
 }

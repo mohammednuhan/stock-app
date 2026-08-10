@@ -32,8 +32,8 @@ app.post('/signup',async(req : Request, res: Response )=>{
     const hashPassword = await bcrypt.hash(password,20)
 
 
-    await prisma.user.create ({
-        where : {
+    await prisma.user.create({
+        data :{
         username ,
         password : hashPassword
         }
@@ -84,23 +84,26 @@ app.post('/signin',async(req : Request ,res : Response )=>{
 
 app.post('/orders',authMiddleware,async(req : Request, res : Response)=>{
      const userId = req.body.userId
-     const { symbol, side, price, qty, type } = req.body
+     const { id,side, price, qty,orderId,filledQty,symbol} = req.body
 
      const order = await prisma.order.findUnique({
         where : {
+            id ,
             userId
         }
      })
     
      await prisma.order.create({
         data : {
-            userId : userId,
-            order : order,
-            symbol ,
-            side,
+            id ,
+            orderId,
+            userId,
             price,
             qty,
-            type
+            filledQty,
+            side,
+            symbol
+        
         }
      })
      res.json ({
@@ -111,34 +114,52 @@ app.post('/orders',authMiddleware,async(req : Request, res : Response)=>{
 
 })
 
-app.get('/orders/orderId',authMiddleware,async(req : Request, res : Response)=>{
-    const userId = req.body.userId;
+app.get('/orders/:orderId',authMiddleware,async(req : Request, res : Response)=>{
    const orderId = Number(req.params.orderId);
 
     const id  = await prisma.order.findFirst({
         where : {
             id : orderId,
-            userId : userId
         }
     })
-    if(!orderId){
+    if(!id){
         return res.status(403).json({
             message : "order id not found"
         })
     }
-    await prisma.orderId.create({
-        data : {
-            id ,
+    await prisma.order.findFirst({
+        where:{
             orderId
         }
     })
+
     res.json ({
-        message  : "order id recorded"
+        message  : "your order list"
     })
 
 })
 
-app.delete('/orders',async(req : Request, res : Response)=>{
+app.delete('/orders',authMiddleware,async(req : Request, res : Response)=>{
+    const orderId = req.body.orderId
+
+    const order = await prisma.order.findFirst ({
+        where : {
+            orderId 
+        }
+    })
+    if(!order) {
+        return res.status(409).json({
+            message : "order not found"
+        })
+    }
+    await prisma.order.delete({
+         where: {
+            id : orderId 
+        }
+    })
+    res.json ({
+        message : "order delete succcesfully"
+    })
     
 })
 
