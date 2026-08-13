@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken'
 import { PrismaClient } from "./generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg"
 import bcrypt  from "bcrypt"
+import cors from "cors"
 import authMiddleware from "./authmiddleware.js"
 
 const adapter = new PrismaPg({
@@ -16,6 +17,8 @@ const prisma = new PrismaClient({
 
 const app = express ();
 app.use(express.json());
+app.use(cors());
+
 
 
 //in memory data
