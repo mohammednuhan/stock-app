@@ -1,9 +1,12 @@
+import dotenv from "dotenv";
+dotenv.config();
 import express from 'express';
-import "dotenv/config";
+import { randomUUID } from "crypto";
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from "./generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcrypt";
+import cors from "cors";
 import authMiddleware from "./authmiddleware.js";
 const adapter = new PrismaPg({
     connectionString: process.env.DATABASE_URL
@@ -11,8 +14,6 @@ const adapter = new PrismaPg({
 const prisma = new PrismaClient({
     adapter,
 });
-const app = express();
-app.use(express.json());
 const balance = {
     1: {
         Axis: {
@@ -29,7 +30,16 @@ const balance = {
         available: 40
     }
 };
+const app = express();
+app.use(express.json());
+app.use(cors());
 app.post("/signup", async (req, res) => {
+    console.log("REQUEST BODY:", req.body);
+    if (!req.body) {
+        return res.status(400).json({
+            message: "Request body is missing",
+        });
+    }
     const { username, password } = req.body;
     const userExist = await prisma.user.findFirst({
         where: {
@@ -54,14 +64,19 @@ app.post("/signup", async (req, res) => {
 });
 app.post('/signin', async (req, res) => {
     const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(403).json({
+            message: "user already logged in"
+        });
+    }
     const user = await prisma.user.findUnique({
         where: {
-            username
+            username: username
         }
     });
     if (!user) {
         return res.status(403).json({
-            message: "user already logged in"
+            message: "invalid username and password"
         });
     }
     const passwordMatch = await bcrypt.compare(password, user.password);
@@ -71,47 +86,68 @@ app.post('/signin', async (req, res) => {
         });
     }
     const token = jwt.sign({
-        userId: user.id
-    }, process.env.JWT_SECRET);
-    console.log(process.env.JWT_SECRET);
-    res.json({
-        token: token
+        userId: user.id,
+        username: user.username,
+    }, process.env.SECRET_KEY, {
+        expiresIn: "1h",
+        jwtid: randomUUID(),
+    });
+    return res.status(200).json({
+        message: "Signin successful",
+        token: token,
+        user: {
+            id: user.id,
+            username: user.username
+        }
     });
 });
-app.post('/orders', authMiddleware, async (req, res) => {
-    const userId = Number(req.body.userId);
+app.post("/orders", authMiddleware, async (req, res) => {
+    const userId = Number(req.userId);
     const { orderId, side, price, qty, filledQty, symbol } = req.body;
+    if (!orderId || !side || !price || !qty || !symbol) {
+        return res.status(400).json({
+            message: "orderId, side, price, qty and symbol are required"
+        });
+    }
+    //user balance
     const userBalance = balance[userId];
     if (!userBalance) {
         return res.status(404).json({
-            message: "User not found"
+            message: "User balance not found"
         });
     }
+    // Get balance for the requested symbol
     const stockBalance = userBalance[symbol];
     if (!stockBalance) {
         return res.status(404).json({
-            message: "Stock not found"
+            message: `Balance for ${symbol} not found`
         });
     }
+    // Calculate total
     const totalPrice = price * qty;
+    // Check available balance
     if (stockBalance.available < totalPrice) {
         return res.status(403).json({
-            message: "Insufficient balance"
+            message: "Insufficient balance",
+            availableBalance: stockBalance.available,
+            requiredBalance: totalPrice
         });
     }
+    // Deduct balance
+    stockBalance.available -= totalPrice;
+    // Create order
     const order = await prisma.order.create({
         data: {
             orderId,
             userId,
             price,
             qty,
-            filledQty,
+            filledQty: filledQty ?? 0,
             side,
             symbol
         }
     });
-    stockBalance.available = stockBalance.available - totalPrice;
-    res.json({
+    return res.status(201).json({
         message: "Order completed successfully",
         order,
         remainingBalance: stockBalance.available

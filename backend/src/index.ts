@@ -1,5 +1,7 @@
+import dotenv from "dotenv";
+dotenv.config();
 import express,{Request ,Response} from 'express';
-import "dotenv/config";
+import { randomUUID } from "crypto";
 import jwt from 'jsonwebtoken'
 import { PrismaClient } from "./generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg"
@@ -14,10 +16,6 @@ const adapter = new PrismaPg({
 const prisma = new PrismaClient({
     adapter,
 })
-
-const app = express ();
-app.use(express.json());
-app.use(cors());
 
 
 
@@ -50,8 +48,20 @@ const balance  : any = {
     }
 }
 
+const app = express ();
+app.use(express.json());
+app.use(cors());
+
 
 app.post("/signup", async (req: Request, res: Response) => {
+   console.log("REQUEST BODY:", req.body);
+
+  if (!req.body) {
+    return res.status(400).json({
+      message: "Request body is missing",
+    });
+  }
+  
 
   const { username, password } = req.body;
   const userExist = await prisma.user.findFirst({
@@ -84,90 +94,126 @@ app.post("/signup", async (req: Request, res: Response) => {
 app.post('/signin',async(req : Request ,res : Response )=>{
         const { username , password } = req.body
 
-        const user = await prisma.user.findUnique({
-            where : {
-                username
-            }
-        })
-        if(!user){
+        if(!username || !password){
             return res.status(403).json({
                 message : "user already logged in"
             })
         }
+         const user = await prisma.user.findUnique({
+            where : {
+                username : username
+            }
+        })
+        if (!user){
+          return res.status(403).json({
+            message  : "invalid username and password"
+          })
+        }
 
        const passwordMatch = await bcrypt.compare(
-            password,
-            user.password
-        );
-        if (!passwordMatch) {
-            return res.status(403).json({
-            message: "Wrong password"
-    });
-}
-
-    const token = jwt.sign(
-    {
-        userId: user.id
-    },
-    process.env.JWT_SECRET!
+      password,
+      user.password
     );
-    console.log(process.env.JWT_SECRET);
-    res.json ({
-       token : token 
-    })
+
+    if (!passwordMatch) {
+      return res.status(403).json({
+        message: "Wrong password"
+      });
+    }
+
+
+ const token = jwt.sign(
+  {
+    userId: user.id,
+    username: user.username,
+  },
+  process.env.SECRET_KEY as string,
+  {
+    expiresIn: "1h",
+    jwtid: randomUUID(),
+  }
+);
+    return res.status(200).json({
+      message: "Signin successful",
+      token: token,
+      user: {
+        id: user.id,
+        username: user.username
+      }
+    });
 })
 
+app.post("/orders",authMiddleware,async (req: Request, res: Response) => {
+      const userId = Number((req as any).userId);
 
-app.post('/orders',authMiddleware,async(req : Request, res : Response)=>{
+      const {
+        orderId,
+        side,
+        price,
+        qty,
+        filledQty,
+        symbol
+      } = req.body;
 
-  const userId = Number(req.body.userId);
+      if (!orderId || !side || !price || !qty || !symbol) {
+        return res.status(400).json({
+          message: "orderId, side, price, qty and symbol are required"
+        });
+      }
+      //user balance
+      const userBalance = balance[userId];
 
-  const { orderId,side,price,qty,filledQty,symbol } = req.body;
+      if (!userBalance) {
+        return res.status(404).json({
+          message: "User balance not found"
+        });
+      }
 
-  const userBalance = balance[userId];
+      // Get balance for the requested symbol
+      const stockBalance = userBalance[symbol];
 
-  if (!userBalance) {
-    return res.status(404).json({
-      message: "User not found"
-    });
-  }
+      if (!stockBalance) {
+        return res.status(404).json({
+          message: `Balance for ${symbol} not found`
+        });
+      }
 
-  const stockBalance = userBalance[symbol];
+      // Calculate total
+      const totalPrice = price * qty;
 
-  if (!stockBalance) {
-    return res.status(404).json({
-      message: "Stock not found"
-    });
-  }
+      // Check available balance
+      if (stockBalance.available < totalPrice) {
+        return res.status(403).json({
+          message: "Insufficient balance",
+          availableBalance: stockBalance.available,
+          requiredBalance: totalPrice
+        });
+      }
 
-  const totalPrice = price * qty;
+      // Deduct balance
+      stockBalance.available -= totalPrice;
 
-  if (stockBalance.available < totalPrice) {
-    return res.status(403).json({
-      message: "Insufficient balance"
-    });
-  }
+      // Create order
+      const order = await prisma.order.create({
+        data: {
+          orderId,
+          userId,
+          price,
+          qty,
+          filledQty: filledQty ?? 0,
+          side,
+          symbol
+        }
+      });
 
-  const order = await prisma.order.create({
-    data: {
-      orderId,
-      userId,
-      price,
-      qty,
-      filledQty,
-      side,
-      symbol
+      return res.status(201).json({
+        message: "Order completed successfully",
+        order,
+        remainingBalance: stockBalance.available
+      });
+
     }
-  });
-
-  stockBalance.available = stockBalance.available - totalPrice;
-
-  res.json({
-    message: "Order completed successfully",
-    order,
-    remainingBalance: stockBalance.available
-  });
-});
+);
 
 app.get('/orders/:orderId',authMiddleware,async(req : Request, res : Response)=>{
    const orderId = Number(req.params.orderId);
