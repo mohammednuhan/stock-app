@@ -69,8 +69,7 @@ export const AnyNull = runtime.AnyNull;
 export const ModelName = {
     User: 'User',
     Stock: 'Stock',
-    Order: 'Order',
-    Fill: 'Fill'
+    Order: 'Order'
 };
 /**
  * Enums
@@ -98,16 +97,6 @@ export const OrderScalarFieldEnum = {
     price: 'price',
     qty: 'qty',
     filledQty: 'filledQty',
-    side: 'side',
-    symbol: 'symbol',
-    createdAt: 'createdAt'
-};
-export const FillScalarFieldEnum = {
-    id: 'id',
-    userId: 'userId',
-    orderId: 'orderId',
-    price: 'price',
-    qty: 'qty',
     side: 'side',
     symbol: 'symbol',
     createdAt: 'createdAt'

@@ -11,9 +11,7 @@ model User {
   id        Int @id @default(autoincrement())
   username  String @unique
   password  String
- 
   orders   Order[]
-  fills    Fill[]
 }
 
 model Stock {
@@ -34,20 +32,4 @@ model Order {
   createdAt     DateTime @default(now())
 
    user      User     @relation(fields: [userId], references: [id])
-  fills     Fill[]
-}
-
-model Fill {
-  id          Int @id @default(autoincrement())
-  userId      Int
-  orderId     Int
-  price       Int 
-  qty         Int
-  side        Int
-  symbol      Int
-  createdAt   DateTime @default(now())
-
-
-  user      User     @relation(fields: [userId], references: [id])
-  order     Order    @relation(fields: [orderId], references: [id])
 }

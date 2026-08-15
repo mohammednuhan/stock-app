@@ -31,23 +31,44 @@ type UserBalance = {
   IDFC: Balance;
 };
 
-const balance  : any = {
-    1 : {
-        Axis :{
-            locked : 10 ,
-            available : 20
-        }
+const balance: {
+  [userId: number]: {
+    [symbol: string]: {
+      locked: number;
+      available: number;
+    };
+  };
+} = {
+  1: {
+    Axis: {
+      locked: 10,
+      available: 20
     },
-    HDFC : {
-        locked : 20 ,
-        available : 30,
+    HDFC: {
+      locked: 20,
+      available: 30
     },
-    IDFC : {
-        locked : 30 ,
-        available : 40
+    IDFC: {
+      locked: 30,
+      available: 40
     }
-}
+  },
 
+  6: {
+    Axis: {
+      locked: 10,
+      available: 20
+    },
+    HDFC: {
+      locked: 20,
+      available: 30
+    },
+    IDFC: {
+      locked: 30,
+      available: 40
+    }
+  }
+};
 const app = express ();
 app.use(express.json());
 app.use(cors());
@@ -215,30 +236,52 @@ app.post("/orders",authMiddleware,async (req: Request, res: Response) => {
     }
 );
 
-app.get('/orders/:orderId',authMiddleware,async(req : Request, res : Response)=>{
-   const orderId = Number(req.params.orderId);
 
-    const id  = await prisma.order.findFirst({
-        where : {
-            id : orderId,
+app.get("/orderlist",authMiddleware,async (req: Request, res: Response) => {
+    try {
+      const userId = Number((req as any).userId);
+
+      if (!userId) {
+        return res.status(401).json({
+          message: "User not authenticated"
+        });
+      } else {
+        const orders = await prisma.order.findMany({
+          where: {
+            userId: userId
+          },
+          orderBy: {
+            createdAt: "desc"
+          }
+        });
+
+        if (!orders) {
+          return res.status(404).json({
+            message: "Orders not found"
+          });
+        } else {
+          if (orders.length === 0) {
+            return res.status(404).json({
+              message: "No orders found"
+            });
+          } else {
+            return res.status(200).json({
+              message: "Your order list",
+              orders: orders
+            });
+          }
         }
-    })
-    if(!id){
-        return res.status(403).json({
-            message : "order id not found"
-        })
+      }
+
+    } catch (error) {
+      console.log(error);
+
+      return res.status(500).json({
+        message: "Internal server error"
+      });
     }
-    await prisma.order.findFirst({
-        where:{
-            orderId
-        }
-    })
-
-    res.json ({
-        message  : "your order list"
-    })
-
-})
+  }
+);
 
 app.delete('/orders',authMiddleware,async(req : Request, res : Response)=>{
     const orderId = req.body.orderId
