@@ -8,6 +8,7 @@ import { PrismaPg } from "@prisma/adapter-pg"
 import bcrypt  from "bcrypt"
 import cors from "cors"
 import authMiddleware from "./authmiddleware.js"
+import { availableParallelism } from "os";
 
 const adapter = new PrismaPg({
     connectionString: process.env.DATABASE_URL!
@@ -21,7 +22,7 @@ const prisma = new PrismaClient({
 
 //in memory data
 
-type status = {
+type status= {
   LIMIT : String,
   SELL : String,
   BUY : String
@@ -189,14 +190,16 @@ app.post("/orders",authMiddleware,async (req: Request, res: Response) => {
           message: "orderId, side, price, qty and symbol are required"
         });
       }
-
-      if(side != LIMIT || side != SELL){
+      
+      // two side
+      if(side != "LIMIT" || side != "MARKET"){
         return res.status(203).json({
           message : "you can sell or buy stock"
         })
       }
 
-      if (type != LIMIT){
+      //first side to buy
+      if (type != "LIMIT"){
         return res.status(403).json({
           message : "you cannot buy the stock"
         })
@@ -208,6 +211,8 @@ app.post("/orders",authMiddleware,async (req: Request, res: Response) => {
         })
       }
 
+
+      // checking user available
       const user = await prisma.user.findUnique({
         where : {
           id : userId
@@ -220,8 +225,8 @@ app.post("/orders",authMiddleware,async (req: Request, res: Response) => {
         })
       }
 
-
-      const order = await prisma.order.findUnique({
+      //checking order is available
+      const order = await prisma.orderId.findUnique({
         where : {
            symbol : symbol
         }
@@ -233,6 +238,7 @@ app.post("/orders",authMiddleware,async (req: Request, res: Response) => {
         })
       }
 
+      // userbalance checking
     const userBalance = balance[userId]
 
       if(!userBalance){
@@ -241,8 +247,66 @@ app.post("/orders",authMiddleware,async (req: Request, res: Response) => {
         })
       }
 
+      if(type === "LIMIT") {
 
-    })
+        if (side === "BUY") {
+            const inrBalance = userBalance.INR
+
+            if(!inrBalance) {
+                return res.status(404).json({
+                    message: "INR Balance not found"
+                })
+            }
+
+            const requiredAmount = qty * price
+
+            if(inrBalance.available < requiredAmount) {
+                return res.status(402).json({
+                    message: `You have insuffient balance short by ${requiredAmount - inrBalance.available}`
+                })
+            }
+
+            inrBalance.available -= requiredAmount
+            inrBalance.locked += requiredAmount
+        }
+        res.json({
+          message : "order is completed"
+        }) 
+      }
+
+      //selling side
+      if (type != "SELL"){
+
+        const orderBalance = userBalance[symbol]
+
+        if(!orderBalance){
+          return res.json(403).json({
+            message : "orders not available"
+          })
+        }
+        orderBalance.available -=symbol
+        orderBalance.locked += qty
+      }
+
+      const order = await prisma.order.create({
+        data : 
+        {
+            userId : userId,
+            orderId : orderId,
+            qty ,
+            filledQty,
+            price,
+            side,
+            type,
+
+        }
+      })
+
+      res.json({
+        message : "order is sell succesfully"
+      })
+})
+    
 
 app.get("/orderlist",authMiddleware,async (req: Request, res: Response) => {
     try {
