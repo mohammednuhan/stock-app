@@ -20,6 +20,12 @@ const prisma = new PrismaClient({
 
 
 //in memory data
+
+type status = {
+  LIMIT : String,
+  SELL : String,
+  BUY : String
+}
 type Balance = {
   locked: number;
   available: number;
@@ -48,13 +54,13 @@ const balance: {
       locked: 20,
       available: 30
     },
-    IDFC: {
+    INR: {
       locked: 30,
       available: 40
     }
   },
 
-  6: {
+  2: {
     Axis: {
       locked: 10,
       available: 20
@@ -63,12 +69,13 @@ const balance: {
       locked: 20,
       available: 30
     },
-    IDFC: {
+    INR: {
       locked: 30,
-      available: 40
+      available: 100
     }
   }
 };
+
 const app = express ();
 app.use(express.json());
 app.use(cors());
@@ -167,13 +174,14 @@ app.post('/signin',async(req : Request ,res : Response )=>{
 app.post("/orders",authMiddleware,async (req: Request, res: Response) => {
       const userId = Number((req as any).userId);
 
-      const {
+    const {
         orderId,
         side,
         price,
         qty,
         filledQty,
-        symbol
+        symbol,
+        type
       } = req.body;
 
       if (!orderId || !side || !price || !qty || !symbol) {
@@ -181,61 +189,60 @@ app.post("/orders",authMiddleware,async (req: Request, res: Response) => {
           message: "orderId, side, price, qty and symbol are required"
         });
       }
-      //user balance
-      const userBalance = balance[userId];
 
-      if (!userBalance) {
-        return res.status(404).json({
-          message: "User balance not found"
-        });
+      if(side != LIMIT || side != SELL){
+        return res.status(203).json({
+          message : "you can sell or buy stock"
+        })
       }
 
-      // Get balance for the requested symbol
-      const stockBalance = userBalance[symbol];
-
-      if (!stockBalance) {
-        return res.status(404).json({
-          message: `Balance for ${symbol} not found`
-        });
-      }
-
-      // Calculate total
-      const totalPrice = price * qty;
-
-      // Check available balance
-      if (stockBalance.available < totalPrice) {
+      if (type != LIMIT){
         return res.status(403).json({
-          message: "Insufficient balance",
-          availableBalance: stockBalance.available,
-          requiredBalance: totalPrice
-        });
+          message : "you cannot buy the stock"
+        })
       }
 
-      // Deduct balance
-      stockBalance.available -= totalPrice;
+      if(price * qty < 0){
+        return res.status(403).json({
+          message : "insucfficient balance"
+        })
+      }
 
-      // Create order
-      const order = await prisma.order.create({
-        data: {
-          orderId,
-          userId,
-          price,
-          qty,
-          filledQty: filledQty ?? 0,
-          side,
-          symbol
+      const user = await prisma.user.findUnique({
+        where : {
+          id : userId
         }
-      });
+      })
 
-      return res.status(201).json({
-        message: "Order completed successfully",
-        order,
-        remainingBalance: stockBalance.available
-      });
+      if(!user){
+        return res.status(403).json({
+          message : "user not found"
+        })
+      }
 
-    }
-);
 
+      const order = await prisma.order.findUnique({
+        where : {
+           symbol : symbol
+        }
+      })
+
+      if(!order){
+        return res.status(403).json({
+          message : "order not found"
+        })
+      }
+
+    const userBalance = balance[userId]
+
+      if(!userBalance){
+        return res.status(403).json({
+          message : "balance is not there"
+        })
+      }
+
+
+    })
 
 app.get("/orderlist",authMiddleware,async (req: Request, res: Response) => {
     try {

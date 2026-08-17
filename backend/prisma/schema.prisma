@@ -29,7 +29,38 @@ model Order {
   filledQty     Int
   side          String
   symbol        String
+  type          String
   createdAt     DateTime @default(now())
 
    user      User     @relation(fields: [userId], references: [id])
+}
+
+model Fill {
+  id          Int @id @default(autoincrement())
+  userId      Int
+  user        Int
+  orderId     Int
+  order       String
+  price       Int 
+  qty         Int
+  type        String
+  side        String
+  createdAt   DateTime @default(now())
+}
+
+
+enum Side {
+  BUY
+  SELL
+}
+
+enum Status {
+  FILLED
+  CANCELLED
+  OPEN
+}
+
+enum Type {
+  LIMIT
+  MARKET
 }
