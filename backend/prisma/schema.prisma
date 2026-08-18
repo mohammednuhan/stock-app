@@ -8,59 +8,45 @@ datasource db {
 }
 
 model User {
-  id        Int @id @default(autoincrement())
-  username  String @unique
-  password  String
+  id       Int     @id @default(autoincrement())
+  username String  @unique
+  password String
+  Fill     Fill[]
   orders   Order[]
 }
 
 model Stock {
-  id      Int @id @default(autoincrement())
-  name    String 
-  symbol  String @unique
+  id     Int    @id @default(autoincrement())
+  name   String
+  symbol String @unique
 }
 
 model Order {
-  id            Int @id @default(autoincrement())
-  orderId       Int
-  userId        Int 
-  price         Int
-  qty           Int
-  filledQty     Int
-  side          String
-  symbol        String
-  type          String
-  createdAt     DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  userId    Int
+  price     Int
+  qty       Int
+  filledQty Int
+  side      String
+  symbol    String
+  type      String   @default("LIMIT")
+  createdAt DateTime @default(now())
+  status    String   @default("OPEN")
 
-   user      User     @relation(fields: [userId], references: [id])
+  user  User   @relation(fields: [userId], references: [id])
+  fills Fill[]
 }
 
 model Fill {
-  id          Int @id @default(autoincrement())
-  userId      Int
-  user        Int
-  orderId     Int
-  order       String
-  price       Int 
-  qty         Int
-  type        String
-  side        String
-  createdAt   DateTime @default(now())
-}
-
-
-enum Side {
-  BUY
-  SELL
-}
-
-enum Status {
-  FILLED
-  CANCELLED
-  OPEN
-}
-
-enum Type {
-  LIMIT
-  MARKET
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  orderId   Int
+  price     Int
+  qty       Int
+  side      Int
+  symbol    Int
+  createdAt DateTime @default(now())
+  Order     Order    @relation(fields: [orderId], references: [id])
+  User      User     @relation(fields: [userId], references: [id])
 }

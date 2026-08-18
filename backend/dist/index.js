@@ -24,12 +24,12 @@ const balance = {
             locked: 20,
             available: 30
         },
-        IDFC: {
+        INR: {
             locked: 30,
             available: 40
         }
     },
-    6: {
+    2: {
         Axis: {
             locked: 10,
             available: 20
@@ -38,9 +38,23 @@ const balance = {
             locked: 20,
             available: 30
         },
-        IDFC: {
+        INR: {
             locked: 30,
-            available: 40
+            available: 100
+        }
+    },
+    7: {
+        Axis: {
+            locked: 10,
+            available: 20
+        },
+        HDFC: {
+            locked: 20,
+            available: 30
+        },
+        INR: {
+            locked: 30,
+            available: 100
         }
     }
 };
@@ -116,56 +130,99 @@ app.post('/signin', async (req, res) => {
     });
 });
 app.post("/orders", authMiddleware, async (req, res) => {
-    const userId = Number(req.userId);
-    const { orderId, side, price, qty, filledQty, symbol } = req.body;
+    const userId = (req.userId);
+    const { orderId, side, price, qty, filledQty, symbol, type } = req.body;
     if (!orderId || !side || !price || !qty || !symbol) {
         return res.status(400).json({
             message: "orderId, side, price, qty and symbol are required"
         });
     }
-    //user balance
-    const userBalance = balance[userId];
-    if (!userBalance) {
-        return res.status(404).json({
-            message: "User balance not found"
+    // two side
+    if (side !== "BUY" && side !== "SELL") {
+        return res.status(400).json({
+            message: "side must be buy or sell"
         });
     }
-    // Get balance for the requested symbol
-    const stockBalance = userBalance[symbol];
-    if (!stockBalance) {
-        return res.status(404).json({
-            message: `Balance for ${symbol} not found`
-        });
-    }
-    // Calculate total
-    const totalPrice = price * qty;
-    // Check available balance
-    if (stockBalance.available < totalPrice) {
+    //first side to buy
+    if (type != "LIMIT") {
         return res.status(403).json({
-            message: "Insufficient balance",
-            availableBalance: stockBalance.available,
-            requiredBalance: totalPrice
+            message: "you cannot buy the stock"
         });
     }
-    // Deduct balance
-    stockBalance.available -= totalPrice;
-    // Create order
-    const order = await prisma.order.create({
-        data: {
-            orderId,
-            userId,
-            price,
-            qty,
-            filledQty: filledQty ?? 0,
-            side,
-            symbol
+    if (price < 0) {
+        return res.status(403).json({
+            message: " price is not available"
+        });
+    }
+    if (qty < 0) {
+        return res.status(403).json({
+            message: " price is not available"
+        });
+    }
+    // checking user available
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId
         }
     });
-    return res.status(201).json({
-        message: "Order completed successfully",
-        order,
-        remainingBalance: stockBalance.available
-    });
+    if (!user) {
+        return res.status(403).json({
+            message: "user not found"
+        });
+    }
+    //checking order is available
+    // userbalance checking
+    const userBalance = balance[userId];
+    if (!userBalance) {
+        return res.status(403).json({
+            message: "balance is not there"
+        });
+    }
+    const requiredAmount = price * qty;
+    if (type === "LIMIT") {
+        if (side === "BUY") {
+            const inrBalance = userBalance.INR;
+            if (!inrBalance) {
+                return res.status(404).json({
+                    message: "INR Balance not found"
+                });
+            }
+            if (inrBalance.available < requiredAmount) {
+                return res.status(402).json({
+                    message: `You have insuffient balance short by ${requiredAmount - inrBalance.available}`
+                });
+            }
+            inrBalance.available -= requiredAmount;
+            inrBalance.locked += requiredAmount;
+        }
+        //selling side
+        if (side === "SELL") {
+            const orderBalance = userBalance[symbol];
+            if (!orderBalance) {
+                return res.status(403).json({
+                    message: "orders not available"
+                });
+            }
+            orderBalance.available -= qty;
+            orderBalance.locked += qty;
+        }
+        const order = await prisma.order.create({
+            data: {
+                userId,
+                orderId,
+                qty,
+                symbol,
+                filledQty: filledQty ?? 0,
+                price,
+                side,
+                type: "LIMIT",
+                status: "OPEN",
+            }
+        });
+        res.status(200).json({
+            message: "order is created succesfully"
+        });
+    }
 });
 app.get("/orderlist", authMiddleware, async (req, res) => {
     try {

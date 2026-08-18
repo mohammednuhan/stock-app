@@ -31,13 +31,22 @@ function authMiddleware(
     else {
       try { 
         console.log("AUTH HEADER:", authHeader);
-console.log("TOKEN:", token);
+        console.log("TOKEN:", token);
         const decoded = jwt.verify(
           token,
           SECRET_KEY
         ) as JwtPayload & {
           userId: number;
         };
+
+      console.log("DECODED JWT:", decoded);
+      console.log("JWT USER ID:", decoded.userId);
+
+      if (!decoded.userId) {
+        return res.status(403).json({
+         message: "User ID is missing",
+  });
+}
 
         if (!decoded.userId) {
           return res.status(403).json({
