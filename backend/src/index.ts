@@ -192,20 +192,21 @@ app.post("/orders",authMiddleware,async (req: Request, res: Response) => {
       }
       
       // two side
-      if(side != "LIMIT" || side != "MARKET"){
+      if(side != "BUY" || side != "SELL"){
         return res.status(203).json({
           message : "you can sell or buy stock"
         })
       }
 
       //first side to buy
-      if (type != "LIMIT"){
+      if (type != "LIMIT" && type !="MARKET" ){
         return res.status(403).json({
           message : "you cannot buy the stock"
         })
       }
 
-      if(price * qty < 0){
+      const requiredAmount = price * qty;
+      if(!requiredAmount){
         return res.status(403).json({
           message : "insucfficient balance"
         })
@@ -226,7 +227,7 @@ app.post("/orders",authMiddleware,async (req: Request, res: Response) => {
       }
 
       //checking order is available
-      const order = await prisma.orderId.findUnique({
+      const order = await prisma.order.findFirst({
         where : {
            symbol : symbol
         }
@@ -269,42 +270,39 @@ app.post("/orders",authMiddleware,async (req: Request, res: Response) => {
             inrBalance.available -= requiredAmount
             inrBalance.locked += requiredAmount
         }
-        res.json({
-          message : "order is completed"
-        }) 
-      }
 
       //selling side
-      if (type != "SELL"){
+      if (side != "SELL"){
 
         const orderBalance = userBalance[symbol]
 
         if(!orderBalance){
-          return res.json(403).json({
+          return res.status(403).json({
             message : "orders not available"
           })
         }
-        orderBalance.available -=symbol
+        orderBalance.available -= qty
         orderBalance.locked += qty
       }
 
-      const order = await prisma.order.create({
-        data : 
-        {
-            userId : userId,
-            orderId : orderId,
+      await prisma.order.create({
+        data : {
+            userId ,
+            orderId ,
             qty ,
-            filledQty,
+            symbol,
+            filledQty : filledQty ?? 0,
             price,
             side,
-            type,
-
+            type : "LIMIT",
+            status : "OPEN",
         }
       })
 
       res.json({
         message : "order is sell succesfully"
       })
+    }
 })
     
 

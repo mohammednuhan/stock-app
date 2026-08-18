@@ -22,7 +22,7 @@ model Stock {
 
 model Order {
   id            Int @id @default(autoincrement())
-  orderId       Int 
+  orderId       Int
   userId        Int 
   price         Int
   qty           Int
