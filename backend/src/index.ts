@@ -373,9 +373,15 @@ app.get("/orderlist",authMiddleware,async (req: Request, res: Response) => {
 app.delete('/orders',authMiddleware,async(req : Request, res : Response)=>{
     const orderId = req.body.orderId
 
+    if(!orderId){
+      return res.status(404).json({
+        message : "orderid not found"
+      })
+    }
+
     const order = await prisma.order.findFirst ({
         where : {
-            orderId 
+            id : orderId 
         }
     })
     if(!order) {
@@ -385,10 +391,10 @@ app.delete('/orders',authMiddleware,async(req : Request, res : Response)=>{
     }
     await prisma.order.delete({
          where: {
-            id : orderId 
+            id : orderId.id 
         }
     })
-    res.json ({
+    return res.status(204).json ({
         message : "order delete succcesfully"
     })
     
