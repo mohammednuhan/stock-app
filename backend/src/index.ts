@@ -462,31 +462,66 @@ app.get('/balance/:symbol',authMiddleware,async(req : Request, res : Response)=>
 })
 
 app.post('/deposit',authMiddleware,async(req : Request, res :Response)=> {
-  // const userId = ((req as any ).userId)
+  const userId = ((req as any ).userId)
 
-  // if (!userId){
-  //   return res.status(404).json({
-  //     message : "user not found"
-  //   })
-  // }
-  // const user= await prisma.user.findMany({
-  //   where : {
-  //     symbol
-  //   }
-  // })
-  // if(!Symbol){
-  //   return res.status(403).json({
-  //     message : "type not found"
-  //   })
-  // }
-  // const userbalance =+ user.I
-  // })
+  const { symbol,amount} = req.body
 
-  // const use
-})
+  if (!userId){
+    return res.status(404).json({
+      message : "user not found"
+    })
+  }
 
+  if (symbol || amount ){
+    return res.status(404).json({
+      message : "symbol and amount not defined"
+    })
+  }
+  if (amount < 0){
+    return res.status(404).json({
+      message : "amount not found"
+    })
+  }
+
+  const user = await prisma.user.findUnique({
+    where : {
+      id : userId
+    }
+  })
+
+  if(!user){
+    return res.status(404).json({
+      message : "user not found"
+    })
+  }
+  const userBalance = balance[userId]
+
+  if(!userBalance){
+    return res.status(404).json({
+      message : "balance not found"
+    })
+  }
+
+  const assetBalance = userBalance[symbol]
+
+  if(!assetBalance){
+    return res.status(404).json({
+      message : "asset balance not available"
+    })
+  }
+ 
+  assetBalance.available += Number(amount)
+
+    return res.status(200).json({
+      message: "Deposit successful",
+      userId: userId,
+      symbol: symbol,
+      depositedAmount: Number(amount),
+      balance: assetBalance
+    });
+  })
+  
 app.post('/withdraw',authMiddleware,async(req : Request, res :Response)=> {
-  const user
 })
 
 app.listen(4000, () => {
