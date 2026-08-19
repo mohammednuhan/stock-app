@@ -223,6 +223,15 @@ app.post("/orders", authMiddleware, async (req, res) => {
             message: "order is created succesfully"
         });
     }
+    //ORDER BOOK FIRST THE PRICE SHOULD MATCH
+    //TWO SIDE BUY AND SELL [WHO HAVE THE HIGHEST -> FIRST PRIOTRITY,FOR SELL LOWEST PRICE -> FIRST ]
+    //FINDING THE BEST PRICE TO BUY AND SELL 
+    //FIXING THE PRICE AT WHAT PRICE TO BUY AND SELL 
+    // WHILE BUY THE QUATITY OF BUYING WAITING THE REQUIRED QUATIY IS FULL 
+    // ORDER STATUS IS FULL FILLED OR NOT 
+    // BUY IS IN INR,STOCK ARE IN SYMBOLS
+    //WAIT TILL THE ORDER IS FULL SILLED
+    //CANCEL ORDERS
 });
 app.get("/orderlist", authMiddleware, async (req, res) => {
     try {
@@ -289,11 +298,53 @@ app.delete('/orders', authMiddleware, async (req, res) => {
         message: "order delete succcesfully"
     });
 });
-app.get('/orders', async (req, res) => {
+app.get('/orders', authMiddleware, async (req, res) => {
+    const userId = (req.userId);
+    if (!userId) {
+        return res.status(403).json({
+            message: "user is invalid"
+        });
+    }
+    await prisma.user.findUnique({
+        where: {
+            id: userId
+        }
+    });
+    const order = await prisma.order.findMany({
+        where: {
+            userId: userId
+        }
+    });
+    if (!order) {
+        return res.status(403).json({
+            message: "order not found"
+        });
+    }
+    return res.status(203).json({
+        message: "this is the order list",
+        order
+    });
 });
 app.get('/balance/usd', async (req, res) => {
 });
-app.get('/balance', async (req, res) => {
+app.get('/balance', authMiddleware, async (req, res) => {
+    const userId = req.body.userId;
+    if (!userId) {
+        return res.status(403).json({
+            message: "user is invalid"
+        });
+    }
+    const userBalance = balance[userId];
+    if (!userBalance) {
+        return res.status(404).json({
+            message: "users balance is not there"
+        });
+    }
+    return res.status(200).json({
+        message: "User balance",
+        userId,
+        balance: userBalance
+    });
 });
 app.listen(4000, () => {
     console.log("Server running on port 4000");

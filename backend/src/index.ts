@@ -396,30 +396,31 @@ app.delete('/orders',authMiddleware,async(req : Request, res : Response)=>{
 
 app.get('/orders',authMiddleware,async(req : Request, res : Response)=>{
   
-  const userId = ((req as req).userId);
+  const userId = ((req as any).userId);
 
   if(!userId){
     return res.status (403).json ({
       message : "user is invalid"
     })
-  }
+  } 
   await prisma.user.findUnique ({
   where : {
-    userId : userId
+    id : userId
   }
   })
-  const order = await prisma.order.findUnique({
+  const order = await prisma.order.findMany({
     where : {
-      order : order ;
+      userId : userId 
     }
   })
   if(!order){
     return res.status (403).json ({
-      message : "order not available"
+      message : "order not found"
     })
   }
-  res.json ({
-    message :"this is the order list" 
+  return res.status(203).json ({
+    message :"this is the order list",
+    order 
   })
 })
 
@@ -428,7 +429,7 @@ app.get('/balance/usd',async(req : Request, res : Response)=>{
 })
 
 
-app.get('/balance',authMiddleware,async(req : Request, res : Response)=>{
+app.get('/balance/:symbol',authMiddleware,async(req : Request, res : Response)=>{
   
   const userId = req.body.userId
 
