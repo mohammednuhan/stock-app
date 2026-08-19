@@ -472,7 +472,7 @@ app.post('/deposit',authMiddleware,async(req : Request, res :Response)=> {
     })
   }
 
-  if (symbol || amount ){
+  if (!symbol || !amount ){
     return res.status(404).json({
       message : "symbol and amount not defined"
     })
@@ -520,8 +520,42 @@ app.post('/deposit',authMiddleware,async(req : Request, res :Response)=> {
       balance: assetBalance
     });
   })
-  
+
 app.post('/withdraw',authMiddleware,async(req : Request, res :Response)=> {
+
+  const userId = ((req as any).userId)
+
+  if(!userId){
+    return res.status(404).json({
+      message : "user not found"
+    })
+  }
+  const {symbol,amount } = req.body
+
+  if(!symbol || amount ) {
+    return res.status(404).json({
+      message : "symbol and amount not defined"
+    })
+  }
+  if (amount < 0) {
+    return res.status(404).json({
+      message : "amount should be positive"
+    })
+  }
+  const user = await prisma.user.findUnique({
+    where : {
+      id : userId
+    }
+  })
+
+  const userBalance = balance[userId]
+
+  if(!userBalance){
+    return res.status(404).json({
+      message : "userbalance not found"
+    })
+  }
+
 })
 
 app.listen(4000, () => {

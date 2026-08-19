@@ -277,6 +277,7 @@ app.get("/orderlist", authMiddleware, async (req, res) => {
         });
     }
 });
+// some error are there
 app.delete('/orders', authMiddleware, async (req, res) => {
     const orderId = req.body.orderId;
     if (!orderId) {
@@ -350,6 +351,57 @@ app.get('/balance/:symbol', authMiddleware, async (req, res) => {
         userId,
         balance: userBalance
     });
+});
+app.post('/deposit', authMiddleware, async (req, res) => {
+    const userId = (req.userId);
+    const { symbol, amount } = req.body;
+    if (!userId) {
+        return res.status(404).json({
+            message: "user not found"
+        });
+    }
+    if (!symbol || !amount) {
+        return res.status(404).json({
+            message: "symbol and amount not defined"
+        });
+    }
+    if (amount < 0) {
+        return res.status(404).json({
+            message: "amount not found"
+        });
+    }
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId
+        }
+    });
+    if (!user) {
+        return res.status(404).json({
+            message: "user not found"
+        });
+    }
+    const userBalance = balance[userId];
+    if (!userBalance) {
+        return res.status(404).json({
+            message: "balance not found"
+        });
+    }
+    const assetBalance = userBalance[symbol];
+    if (!assetBalance) {
+        return res.status(404).json({
+            message: "asset balance not available"
+        });
+    }
+    assetBalance.available += Number(amount);
+    return res.status(200).json({
+        message: "Deposit successful",
+        userId: userId,
+        symbol: symbol,
+        depositedAmount: Number(amount),
+        balance: assetBalance
+    });
+});
+app.post('/withdraw', authMiddleware, async (req, res) => {
 });
 app.listen(4000, () => {
     console.log("Server running on port 4000");
