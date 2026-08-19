@@ -370,6 +370,8 @@ app.get("/orderlist",authMiddleware,async (req: Request, res: Response) => {
   }
 );
 
+
+// some error are there
 app.delete('/orders',authMiddleware,async(req : Request, res : Response)=>{
     const orderId = req.body.orderId
 
@@ -459,7 +461,33 @@ app.get('/balance/:symbol',authMiddleware,async(req : Request, res : Response)=>
     });
 })
 
+app.post('/deposit',authMiddleware,async(req : Request, res :Response)=> {
+  // const userId = ((req as any ).userId)
 
+  // if (!userId){
+  //   return res.status(404).json({
+  //     message : "user not found"
+  //   })
+  // }
+  // const user= await prisma.user.findMany({
+  //   where : {
+  //     symbol
+  //   }
+  // })
+  // if(!Symbol){
+  //   return res.status(403).json({
+  //     message : "type not found"
+  //   })
+  // }
+  // const userbalance =+ user.I
+  // })
+
+  // const use
+})
+
+app.post('/withdraw',authMiddleware,async(req : Request, res :Response)=> {
+  const user
+})
 
 app.listen(4000, () => {
   console.log("Server running on port 4000");
