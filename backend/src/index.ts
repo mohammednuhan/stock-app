@@ -9,6 +9,7 @@ import bcrypt  from "bcrypt"
 import cors from "cors"
 import authMiddleware from "./authmiddleware.js"
 import { availableParallelism } from "os";
+import { resolveSoa } from "dns";
 
 const adapter = new PrismaPg({
     connectionString: process.env.DATABASE_URL!
@@ -393,8 +394,33 @@ app.delete('/orders',authMiddleware,async(req : Request, res : Response)=>{
     
 })
 
-app.get('/orders',async(req : Request, res : Response)=>{
+app.get('/orders',authMiddleware,async(req : Request, res : Response)=>{
+  
+  const userId = ((req as req).userId);
 
+  if(!userId){
+    return res.status (403).json ({
+      message : "user is invalid"
+    })
+  }
+  await prisma.user.findUnique ({
+  where : {
+    userId : userId
+  }
+  })
+  const order = await prisma.order.findUnique({
+    where : {
+      order : order ;
+    }
+  })
+  if(!order){
+    return res.status (403).json ({
+      message : "order not available"
+    })
+  }
+  res.json ({
+    message :"this is the order list" 
+  })
 })
 
 app.get('/balance/usd',async(req : Request, res : Response)=>{
@@ -402,8 +428,28 @@ app.get('/balance/usd',async(req : Request, res : Response)=>{
 })
 
 
-app.get('/balance',async(req : Request, res : Response)=>{
+app.get('/balance',authMiddleware,async(req : Request, res : Response)=>{
+  
+  const userId = req.body.userId
 
+  if(!userId) {
+    return res.status (403).json ({
+      message : "user is invalid"
+    })
+  }
+  const userBalance = balance[userId]
+  
+  if(!userBalance){
+    return res.status (404).json ({
+      message : "users balance is not there"
+    })
+  }
+
+  return res.status(200).json({
+      message: "User balance",
+        userId,
+        balance: userBalance
+    });
 })
 
 
