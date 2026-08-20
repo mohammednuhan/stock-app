@@ -30,12 +30,11 @@ model Order {
   filledQty Int
   side      String
   symbol    String
-  type      String   @default("LIMIT")
   createdAt DateTime @default(now())
   status    String   @default("OPEN")
-
-  user  User   @relation(fields: [userId], references: [id])
-  fills Fill[]
+  type      String   @default("LIMIT")
+  fills     Fill[]
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model Fill {

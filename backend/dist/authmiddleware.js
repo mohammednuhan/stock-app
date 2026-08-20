@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import jwt from "jsonwebtoken";
 const SECRET_KEY = process.env.SECRET_KEY;
-function authMiddleware(req, res, next) {
+export const authMiddleware = (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
         return res.status(401).json({
@@ -46,5 +46,5 @@ function authMiddleware(req, res, next) {
             }
         }
     }
-}
+};
 export default authMiddleware;

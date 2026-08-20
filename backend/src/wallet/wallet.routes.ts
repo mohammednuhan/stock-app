@@ -5,6 +5,10 @@ import { PrismaClient } from "../generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg";
  
 
+const walletRouter = Router();
+
+
+
 const connectionString = process.env.DATABASE_URL!;
 
 const adapter = new PrismaPg({
@@ -85,10 +89,6 @@ const balance: {
     }
   }
 };
-
-
-const walletRouter = Router();
-
 
 walletRouter.get('/balance/:symbol',authMiddleware,async(req : Request, res : Response)=>{
   
@@ -236,3 +236,5 @@ walletRouter.post('/withdraw',authMiddleware,async(req : Request, res :Response)
       balance: assetBalance
     });
 })
+
+export default walletRouter ;

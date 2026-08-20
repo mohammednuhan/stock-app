@@ -1,10 +1,11 @@
 import { Router, Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import "dotenv/config";
 import { randomUUID } from "crypto";
 import { PrismaClient } from "../generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg";
- 
+
 
 const connectionString = process.env.DATABASE_URL!;
 
@@ -17,36 +18,47 @@ const prisma = new PrismaClient({
 });
 
 
-
 const authRouter = Router();
+
 
 authRouter.post("/signup", async (req: Request, res: Response) => {
 
-  const { username, password } = req.body;
-  const userExist = await prisma.user.findFirst({
-    where: {
-      username,
-    },
-  });
+  try {
+    const { username, password } = req.body;
 
-  if (userExist) {
-    return res.status(409).json({
-      message: "User already exists",
+    const userExist = await prisma.user.findFirst({
+      where: {
+        username,
+      },
+    });
+
+    if (userExist) {
+      return res.status(409).json({
+        message: "User already exists",
+      });
+    }
+
+    const hashPassword = await bcrypt.hash(password, 10);
+
+    await prisma.user.create({
+      data: {
+        username,
+        password: hashPassword,
+      },
+    });
+
+    res.json({
+      message: "User created successfully",
+    });
+
+  } catch (error) {
+    console.error("PRISMA ERROR:", error);
+
+    return res.status(500).json({
+      message: "Something went wrong",
+      error: error instanceof Error ? error.message : error,
     });
   }
-
-  const hashPassword = await bcrypt.hash(password, 10);
-
-  await prisma.user.create({
-    data: {
-      username,
-      password: hashPassword,
-    },
-  });
-  
-  res.json({
-    message: "User created successfully",
-  });
 });
 
 
@@ -102,4 +114,4 @@ authRouter.post('/signin',async(req : Request ,res : Response )=>{
     });
 })
 
-export default Router;
+export default authRouter

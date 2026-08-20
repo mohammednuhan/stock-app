@@ -100,9 +100,9 @@ export const OrderScalarFieldEnum = {
     filledQty: 'filledQty',
     side: 'side',
     symbol: 'symbol',
-    type: 'type',
     createdAt: 'createdAt',
-    status: 'status'
+    status: 'status',
+    type: 'type'
 };
 export const FillScalarFieldEnum = {
     id: 'id',
