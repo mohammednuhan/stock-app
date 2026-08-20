@@ -7,11 +7,16 @@ import { Request, Response, NextFunction } from "express";
 
 const SECRET_KEY = process.env.SECRET_KEY as string;
 
-function authMiddleware(
+export interface AuthRequest extends Request {
+  userId?: number;
+  username?: string;
+}
+
+export const authMiddleware = (
   req: Request,
   res: Response,
   next: NextFunction
-) {
+) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
