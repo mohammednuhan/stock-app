@@ -53,8 +53,8 @@ const balance = {
             available: 30
         },
         INR: {
-            locked: 30,
-            available: 100
+            locked: 500,
+            available: 2000
         }
     }
 };
@@ -234,48 +234,26 @@ app.post("/orders", authMiddleware, async (req, res) => {
     //CANCEL ORDERS
 });
 app.get("/orderlist", authMiddleware, async (req, res) => {
-    try {
-        const userId = Number(req.userId);
-        if (!userId) {
-            return res.status(401).json({
-                message: "User not authenticated"
-            });
-        }
-        else {
-            const orders = await prisma.order.findMany({
-                where: {
-                    userId: userId
-                },
-                orderBy: {
-                    createdAt: "desc"
-                }
-            });
-            if (!orders) {
-                return res.status(404).json({
-                    message: "Orders not found"
-                });
-            }
-            else {
-                if (orders.length === 0) {
-                    return res.status(404).json({
-                        message: "No orders found"
-                    });
-                }
-                else {
-                    return res.status(200).json({
-                        message: "Your order list",
-                        orders: orders
-                    });
-                }
-            }
-        }
-    }
-    catch (error) {
-        console.log(error);
-        return res.status(500).json({
-            message: "Internal server error"
+    const userId = (req.userId);
+    if (!userId) {
+        return res.status(404).json({
+            message: "user not found"
         });
     }
+    const order = await prisma.order.findMany({
+        where: {
+            userId: userId
+        }
+    });
+    if (order.length == 0) {
+        return res.status(403).json({
+            message: "order not found"
+        });
+    }
+    res.status(200).json({
+        message: "order list",
+        order
+    });
 });
 // some error are there
 app.delete('/orders', authMiddleware, async (req, res) => {
@@ -402,6 +380,56 @@ app.post('/deposit', authMiddleware, async (req, res) => {
     });
 });
 app.post('/withdraw', authMiddleware, async (req, res) => {
+    const userId = (req.userId);
+    if (!userId) {
+        return res.status(404).json({
+            message: "user not found"
+        });
+    }
+    const { symbol, amount } = req.body;
+    if (!symbol || amount == undefined) {
+        return res.status(404).json({
+            message: "symbol and amount not defined"
+        });
+    }
+    if (amount < 0) {
+        return res.status(404).json({
+            message: "amount should be positive"
+        });
+    }
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId
+        }
+    });
+    const userBalance = balance[userId];
+    if (!userBalance) {
+        return res.status(404).json({
+            message: "userbalance not found"
+        });
+    }
+    const assetBalance = userBalance[symbol];
+    if (!assetBalance) {
+        return res.status(404).json({
+            message: "stock not found"
+        });
+    }
+    const withdrawAmount = Number(amount);
+    if (assetBalance.available < withdrawAmount) {
+        return res.status(400).json({
+            message: "Insufficient available balance",
+            available: assetBalance.available,
+            requested: withdrawAmount
+        });
+    }
+    assetBalance.available -= withdrawAmount;
+    return res.status(200).json({
+        message: "Withdraw successful",
+        userId,
+        symbol,
+        amount: withdrawAmount,
+        balance: assetBalance
+    });
 });
 app.listen(4000, () => {
     console.log("Server running on port 4000");
