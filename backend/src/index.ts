@@ -556,6 +556,32 @@ app.post('/withdraw',authMiddleware,async(req : Request, res :Response)=> {
     })
   }
 
+  const assetBalance = userBalance[symbol]
+
+  if(!assetBalance){
+    return res.status(404).json({
+      message : "stock not found"
+    })
+  }
+  const withdrawAmount = Number(amount);
+
+    if (assetBalance.available < withdrawAmount) {
+      return res.status(400).json({
+        message: "Insufficient available balance",
+        available: assetBalance.available,
+        requested: withdrawAmount
+      });
+    }
+
+    assetBalance.available -= withdrawAmount;
+
+    return res.status(200).json({
+      message: "Withdraw successful",
+                userId,
+                symbol,
+      amount: withdrawAmount,
+      balance: assetBalance
+    });
 })
 
 app.listen(4000, () => {
